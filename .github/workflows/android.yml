@@ -2,9 +2,13 @@ name: Android Build
 
 on:
   push:
-    branches: []
+    branches: [ dev ]
   pull_request:
-    branches: []
+    branches: [ dev ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -26,9 +30,25 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build debug APK with Gradle
+      # Debug uses the auto-generated debug keystore, no signing config needed.
       run: ./gradlew app:packageDebug
     - name: Upload debug APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: Auxio_Canary
         path: ./app/build/outputs/apk/debug/app-debug.apk
+    - name: Publish GitHub release
+      # Skip on pull requests, where the token has no write access.
+      if: github.event_name != 'pull_request'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: canary
+        name: Auxio Canary
+        body: Automated canary build from ${{ github.ref_name }} @ ${{ github.sha }}
+        prerelease: true
+        # Overwrite the APK of the previous canary release.
+        overwrite_files: true
+        fail_on_unmatched_files: true
+        files: ./app/build/outputs/apk/debug/app-debug.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

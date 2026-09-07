@@ -30,6 +30,7 @@ import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.Toolbar
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.activityViewModels
@@ -42,6 +43,7 @@ import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.list.ListViewModel
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.music.resolveNames
+import org.oxycblt.auxio.playback.lyrics.LyricLine
 import org.oxycblt.auxio.playback.queue.QueueViewModel
 import org.oxycblt.auxio.playback.state.RepeatMode
 import org.oxycblt.auxio.playback.ui.StyledSeekBar
@@ -82,6 +84,7 @@ class PlaybackPanelFragment :
     private val queueModel: QueueViewModel by viewModels()
     private var equalizerLauncher: ActivityResultLauncher<Intent>? = null
     private var userAwarePagerCallback: UserAwarePagerCallback? = null
+    private var showLyrics = false
 
     override fun onCreateBinding(inflater: LayoutInflater) =
         FragmentPlaybackPanelBinding.inflate(inflater)
@@ -135,6 +138,8 @@ class PlaybackPanelFragment :
             offscreenPageLimit = 1
         }
 
+        binding.playbackCoverLyrics?.setOnClickListener { toggleLyrics() }
+
         // Set up fast seek overlay
         binding.playbackSong.apply {
             isSelected = true
@@ -180,6 +185,8 @@ class PlaybackPanelFragment :
         collectImmediately(playbackModel.repeatMode, ::updateRepeat)
         collectImmediately(playbackModel.isPlaying, ::updatePlaying)
         collectImmediately(playbackModel.isShuffled, ::updateShuffled)
+        collectImmediately(playbackModel.lyrics, ::updateLyrics)
+        collectImmediately(playbackModel.currentLyricLine, ::updateLyricLine)
         collectImmediately(playbackModel.pagerQueue, ::updatePager)
     }
 
@@ -225,6 +232,7 @@ class PlaybackPanelFragment :
         binding.playbackArtist.isSelected = false
         binding.playbackAlbum?.isSelected = false
         binding.playbackToolbar.setOnMenuItemClickListener(null)
+        binding.playbackCoverLyrics?.setOnClickListener(null)
         userAwarePagerCallback?.release()
         binding.playbackPager?.adapter = null
     }
@@ -280,7 +288,39 @@ class PlaybackPanelFragment :
     }
 
     private fun updatePosition(positionDs: Long) {
-        requireBinding().playbackSeekBar?.positionDs = positionDs
+        val binding = requireBinding()
+        binding.playbackSeekBar?.positionDs = positionDs
+    }
+
+    private fun updateLyrics(lyrics: List<LyricLine>?) {
+        val binding = requireBinding()
+        val lines = lyrics.orEmpty()
+        binding.playbackLyrics?.apply {
+            setLyrics(lines)
+            isVisible = lines.isNotEmpty()
+        }
+        updateCoverLyrics(lines)
+    }
+
+    private fun updateLyricLine(line: Int) {
+        val binding = requireBinding()
+        binding.playbackLyrics?.setActiveLine(line)
+        binding.playbackCoverLyrics?.setActiveLine(line)
+    }
+
+    /** Show [lines] over the cover, but only if the user has actually asked for them. */
+    private fun updateCoverLyrics(lines: List<LyricLine>) {
+        val binding = requireBinding()
+        val coverLyrics = binding.playbackCoverLyrics ?: return
+        coverLyrics.setLyrics(lines)
+        val show = showLyrics && lines.isNotEmpty()
+        coverLyrics.isVisible = show
+        binding.playbackPager?.isVisible = !show
+    }
+
+    private fun toggleLyrics() {
+        showLyrics = !showLyrics
+        updateCoverLyrics(playbackModel.lyrics.value.orEmpty())
     }
 
     private fun updateRepeat(repeatMode: RepeatMode) {
@@ -396,5 +436,13 @@ class PlaybackPanelFragment :
             Direction.FORWARDS -> playbackModel.stepForward()
             Direction.BACKWARDS -> playbackModel.stepBackwards()
         }
+    }
+
+    override fun onCoverTapped() {
+        if (binding?.playbackCoverLyrics == null) {
+            // This layout keeps it's lyrics beside the controls, there is nothing to swap out.
+            return
+        }
+        toggleLyrics()
     }
 }

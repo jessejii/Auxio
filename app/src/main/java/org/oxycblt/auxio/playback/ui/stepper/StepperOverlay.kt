@@ -71,6 +71,9 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
 
     interface Listener {
         fun seek(direction: Direction)
+
+        /** Called when the cover is tapped once, i.e not one half of a fast seek double tap. */
+        fun onCoverTapped() {}
     }
 
     init {
@@ -136,7 +139,11 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
     override fun onTouchEvent(event: MotionEvent): Boolean =
         gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
 
-    override fun onSingleTapConfirmed(e: MotionEvent) = false
+    override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+        listener?.onCoverTapped()
+        // Still let the tap fall through to whatever else might want it.
+        return false
+    }
 
     private fun enter(
         secondsView: SecondsView,

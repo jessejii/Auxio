@@ -41,11 +41,10 @@
         android:layout_marginEnd="@dimen/spacing_medium"
         android:layout_marginBottom="@dimen/spacing_tiny"
         android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@+id/playback_controls_wrapper"
+        app:layout_constraintBottom_toTopOf="@+id/playback_lyrics"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/playback_pager"
-        app:layout_constraintTop_toTopOf="@+id/playback_pager"
-        app:layout_constraintVertical_chainStyle="packed">
+        app:layout_constraintTop_toTopOf="@+id/playback_pager">
 
         <TextView
             android:id="@+id/playback_song"
@@ -64,6 +63,17 @@
             tools:text="Artist Name" />
 
     </LinearLayout>
+    <org.oxycblt.auxio.playback.lyrics.LyricsView
+        android:id="@+id/playback_lyrics"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/size_lyrics_two_lines"
+        android:layout_marginVertical="@dimen/spacing_small"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/playback_controls_wrapper"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playback_pager"
+        app:layout_constraintTop_toBottomOf="@+id/playback_info_container" />
+
     <org.oxycblt.auxio.playback.ui.ForcedLTRFrameLayout
         android:id="@+id/playback_controls_wrapper"
         android:layout_width="0dp"
@@ -74,7 +84,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/playback_pager"
-        app:layout_constraintTop_toBottomOf="@+id/playback_info_container">
+        app:layout_constraintTop_toBottomOf="@+id/playback_lyrics">
 
         <org.oxycblt.auxio.playback.ui.button.ScaledPlaybackButtonGroup
             android:layout_width="match_parent"
@@ -88,7 +98,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/desc_change_repeat"
                 app:icon="@drawable/ic_repeat_off_24"
-                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium" />
+                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Small" />
 
             <org.oxycblt.auxio.playback.ui.button.ScaledPlaybackButton
                 android:id="@+id/playback_skip_prev"
@@ -97,7 +107,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/desc_skip_prev"
                 app:icon="@drawable/ic_skip_prev_24"
-                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Large.Narrow" />
+                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium.Narrow" />
 
             <org.oxycblt.auxio.playback.ui.button.ScaledPlaybackButton
                 android:id="@+id/playback_play_pause"
@@ -106,7 +116,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/desc_play_pause"
                 app:icon="@drawable/sel_playing_state_24"
-                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Large"
+                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium"
                 tools:icon="@drawable/ic_play_24" />
 
             <org.oxycblt.auxio.playback.ui.button.ScaledPlaybackButton
@@ -116,7 +126,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/desc_skip_next"
                 app:icon="@drawable/ic_skip_next_24"
-                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Large.Narrow" />
+                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium.Narrow" />
 
             <org.oxycblt.auxio.playback.ui.button.ScaledPlaybackButton
                 android:id="@+id/playback_shuffle"
@@ -125,7 +135,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/desc_shuffle"
                 app:icon="@drawable/sel_shuffle_state_24"
-                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium"
+                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Small"
                 app:tint="@color/sel_activatable_icon" />
 
         </org.oxycblt.auxio.playback.ui.button.ScaledPlaybackButtonGroup>

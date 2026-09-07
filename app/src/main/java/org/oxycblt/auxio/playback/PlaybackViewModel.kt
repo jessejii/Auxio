@@ -27,9 +27,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.oxycblt.auxio.list.ListSettings
 import org.oxycblt.auxio.list.adapter.UpdateInstructions
+import org.oxycblt.auxio.playback.lyrics.LyricLine
+import org.oxycblt.auxio.playback.lyrics.LyricsRepository
+import org.oxycblt.auxio.playback.lyrics.NO_LYRIC_LINE
 import org.oxycblt.auxio.playback.state.DeferredPlayback
 import org.oxycblt.auxio.playback.state.PlaybackCommand
 import org.oxycblt.auxio.playback.state.PlaybackStateManager
@@ -62,8 +66,10 @@ constructor(
     private val playbackSettings: PlaybackSettings,
     private val commandFactory: PlaybackCommand.Factory,
     private val listSettings: ListSettings,
+    private val lyricsRepository: LyricsRepository,
 ) : ViewModel(), PlaybackStateManager.Listener, PlaybackSettings.Listener {
     private var lastPositionJob: Job? = null
+    private var lyricLineJob: Job? = null
 
     /** The currently playing song. */
     val song: StateFlow<Song?>
@@ -84,6 +90,17 @@ constructor(
     /** The current [RepeatMode]. */
     val repeatMode: StateFlow<RepeatMode>
         field = MutableStateFlow(RepeatMode.NONE)
+
+    /**
+     * The lyrics of the currently playing song. Null if the song has no lyrics, or if they have not
+     * been loaded yet.
+     */
+    val lyrics: StateFlow<List<LyricLine>?>
+        field = MutableStateFlow<List<LyricLine>?>(null)
+
+    /** The index of the currently sung [LyricLine], or [NO_LYRIC_LINE] if no line is being sung. */
+    val currentLyricLine: StateFlow<Int>
+        field = MutableStateFlow(NO_LYRIC_LINE)
 
     /** Whether the queue is shuffled or not. */
     val isShuffled: StateFlow<Boolean>
@@ -124,6 +141,18 @@ constructor(
     init {
         playbackManager.addListener(this)
         playbackSettings.registerListener(this)
+        // collectLatest discards the previous load when the song changes mid-read.
+        viewModelScope.launch { song.collectLatest(::loadLyrics) }
+    }
+
+    private suspend fun loadLyrics(song: Song?) {
+        lyrics.value = null
+        restartLyricLineTicker()
+        if (song == null) {
+            return
+        }
+        lyrics.value = lyricsRepository.load(song)
+        restartLyricLineTicker()
     }
 
     override fun onCleared() {
@@ -192,6 +221,41 @@ constructor(
                 positionDs.value = progression.calculateElapsedPositionMs().msToDs()
                 // Wait a deci-second for the next position tick.
                 delay(100.milliseconds)
+            }
+        }
+        restartLyricLineTicker()
+    }
+
+    /**
+     * Re-align the lyric highlight to the current position.
+     *
+     * While playing this starts a ticker that sleeps until the next lyric line instead of polling,
+     * so highlight changes land on time no matter how janky the main thread is. The ticker re-reads
+     * the authoritative player position on every wake-up, so a late wake-up self-corrects instead
+     * of accumulating drift. Paused/buffered playback has no ticker at all, since the position is
+     * frozen.
+     */
+    private fun restartLyricLineTicker() {
+        lyricLineJob?.cancel()
+        val lines = lyrics.value.orEmpty()
+        if (lines.isEmpty()) {
+            currentLyricLine.value = NO_LYRIC_LINE
+            return
+        }
+        val progression = playbackManager.progression
+        val elapsedMs = progression.calculateElapsedPositionMs()
+        if (!progression.isAdvancing) {
+            currentLyricLine.value = lines.indexOfLast { it.timeMs <= elapsedMs }
+            return
+        }
+        lyricLineJob = viewModelScope.launch {
+            while (true) {
+                val current = playbackManager.progression
+                val nowMs = current.calculateElapsedPositionMs()
+                val line = lines.indexOfLast { it.timeMs <= nowMs }
+                currentLyricLine.value = line
+                val nextLineMs = lines.getOrNull(line + 1)?.timeMs ?: return@launch
+                delay(nextLineMs - nowMs)
             }
         }
     }
